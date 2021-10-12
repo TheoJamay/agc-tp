@@ -83,17 +83,15 @@ def read_fasta(amplicon_file, minseqlen):
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    # dict_occu = {}
-    # for seq in read_fasta(amplicon_file, minseqlen) :
-    #     if seq not in dict_occu :
-    #         dict_occu[seq] = 1
-    #     else :
-    #         dict_occu[seq] += 1
-    # for key,occu in sorted(dict_occu.items(), key=lambda t:t[1],reverse=True) :
-    #     if occu >= mincount :
-    #         yield [key,occu]
-    
-    
+    dict_occu = {}
+    for seq in read_fasta(amplicon_file, minseqlen) :
+        if seq not in dict_occu :
+            dict_occu[seq] = 1
+        else :
+            dict_occu[seq] += 1
+    for key,occu in sorted(dict_occu.items(), key=lambda t:t[1],reverse=True) :
+        if occu >= mincount :
+            yield [key,occu]
 
 
 def get_unique(ids):
@@ -133,14 +131,26 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     pass
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    seqs=list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+    list_otu = [[seqs[0][0],seqs[0][1]]]
+    for seq in seqs[1:] :
+        for seq2 in list_otu :
+            if get_identity(nw.global_align(seq[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))) < 97 :
+                list_otu.append([seq[0],seq[1]])
+    return list_otu
+
 
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
 def write_OTU(OTU_list, output_file):
-    pass
+    with open(output_file,"w") as otu_file :
+        for i in range(0,OTU_list) :
+            otu_file.write(">OTU_{}occurrence:{}\n".format(i,OTU_list[i][1]))
+            otu_file.write(OTU_list[i][0])
+
+
 
 #==============================================================
 # Main program
@@ -156,8 +166,11 @@ def main():
     #read_fasta(args.amplicon_file, args.minseqlen)
     # for seq in read_fasta(args.amplicon_file, args.minseqlen) :
     #     print(seq)
-    for seq in dereplication_fulllength(args.amplicon_file, args.minseqlen, args.mincount) :
-        print(seq)
+    # for seq in dereplication_fulllength(args.amplicon_file, args.minseqlen, args.mincount) :
+    #     print(seq)
+    OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+    output_file = "OTU.fasta"
+    write_OTU(OTU_list, output_file)
 
 if __name__ == '__main__':
     main()
