@@ -70,11 +70,30 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    pass
+    with gzip.open(amplicon_file,"rt") as amp_file :
+        seq = ""
+        for line in amp_file :
+            if line.startswith(">") :
+                if len(seq) >= minseqlen :
+                    yield seq
+                seq = ""
+            else :    
+                seq += line.strip()
+        yield seq
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
+    # dict_occu = {}
+    # for seq in read_fasta(amplicon_file, minseqlen) :
+    #     if seq not in dict_occu :
+    #         dict_occu[seq] = 1
+    #     else :
+    #         dict_occu[seq] += 1
+    # for key,occu in sorted(dict_occu.items(), key=lambda t:t[1],reverse=True) :
+    #     if occu >= mincount :
+    #         yield [key,occu]
+    
+    
 
 
 def get_unique(ids):
@@ -132,8 +151,13 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-    # Votre programme ici
 
+    # Votre programme ici
+    #read_fasta(args.amplicon_file, args.minseqlen)
+    # for seq in read_fasta(args.amplicon_file, args.minseqlen) :
+    #     print(seq)
+    for seq in dereplication_fulllength(args.amplicon_file, args.minseqlen, args.mincount) :
+        print(seq)
 
 if __name__ == '__main__':
     main()
