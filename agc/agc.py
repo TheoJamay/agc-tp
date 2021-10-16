@@ -127,16 +127,41 @@ def get_identity(alignment_list):
             id_nu += 1
     return round(100.0 * id_nu / len(alignment_list[0]), 2)
 
+def search_mates(kmer_dict, sequence, kmer_size):
+    chunks = get_chunks(sequence, chunk_size)
+    for chunk in chunks :
+        for kmer in cut_kmer(sequence,kmer_size)
+
+
+def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    for kmer in cut_kmer(sequence,kmer_size) :
+        if kmer not in kmer_dict :
+            kmer_dict[kmer] = [id_seq]
+        elif kmer in kmer_dict and id_seq not in kmer_dict[kmer] :
+            kmer_dict[kmer].append(id_seq)
+    return kmer_dict
+
+
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    kmer_dict = {}
+    list_otu = abundance_greedy_clustering(amplicon_file, minseqlen, mincount,chunk_size,kmer_size)
+    list_chim = [list_otu[0],list_otu[1]]
+    for seq_otu in list_otu :
+        for i in range(len(list_chim)) :
+            kmer_dict = get_unique_kmer(kmer_dict,list_chim[i][0],i,8)
+        search_mates(kmer_dict, seq_otu, kmer_size)
+    for key in kmer_dict :
+        print(key,kmer_dict[key])
+
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     seqs=list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
     list_otu = [[seqs[0][0],seqs[0][1]]]
     for seq in seqs[1:] :
-        for seq2 in list_otu :
-            if get_identity(nw.global_align(seq[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))) < 97 :
+        for seq_otu in list_otu :
+            if get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))) < 97 :
                 list_otu.append([seq[0],seq[1]])
+                break
     return list_otu
 
 
@@ -146,9 +171,9 @@ def fill(text, width=80):
 
 def write_OTU(OTU_list, output_file):
     with open(output_file,"w") as otu_file :
-        for i in range(0,OTU_list) :
+        for i in range(len(OTU_list)) :
             otu_file.write(">OTU_{}occurrence:{}\n".format(i,OTU_list[i][1]))
-            otu_file.write(OTU_list[i][0])
+            otu_file.write(fill(OTU_list[i][0])+"\n")
 
 
 
@@ -168,9 +193,10 @@ def main():
     #     print(seq)
     # for seq in dereplication_fulllength(args.amplicon_file, args.minseqlen, args.mincount) :
     #     print(seq)
-    OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
-    output_file = "OTU.fasta"
-    write_OTU(OTU_list, output_file)
+    # OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+    # output_file = "OTU.fasta"
+    # write_OTU(OTU_list, output_file)
+    chimera_removal(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
 
 if __name__ == '__main__':
     main()
