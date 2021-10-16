@@ -118,6 +118,7 @@ def cut_kmer(sequence, kmer_size):
     for i in range(0, len(sequence) - kmer_size + 1):
         yield sequence[i:i+kmer_size]
 
+
 def get_identity(alignment_list):
     """Prend en une liste de séquences alignées au format ["SE-QUENCE1", "SE-QUENCE2"]
     Retourne le pourcentage d'identite entre les deux."""
@@ -126,11 +127,6 @@ def get_identity(alignment_list):
         if alignment_list[0][i] == alignment_list[1][i]:
             id_nu += 1
     return round(100.0 * id_nu / len(alignment_list[0]), 2)
-
-def search_mates(kmer_dict, sequence, kmer_size):
-    chunks = get_chunks(sequence, chunk_size)
-    for chunk in chunks :
-        for kmer in cut_kmer(sequence,kmer_size)
 
 
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
@@ -142,6 +138,16 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
     return kmer_dict
 
 
+def search_mates(kmer_dict, sequence, kmer_size):
+    list_id = []
+    for kmer in cut_kmer(sequence,kmer_size) :
+        if kmer in kmer_dict :
+            for value in kmer_dict[kmer] :
+                list_id.append(value)
+    list_best = Counter(list_id).most_common(2)
+    return list_best[0][0],list_best[1][0]
+
+
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     kmer_dict = {}
     list_otu = abundance_greedy_clustering(amplicon_file, minseqlen, mincount,chunk_size,kmer_size)
@@ -149,9 +155,11 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     for seq_otu in list_otu :
         for i in range(len(list_chim)) :
             kmer_dict = get_unique_kmer(kmer_dict,list_chim[i][0],i,8)
-        search_mates(kmer_dict, seq_otu, kmer_size)
-    for key in kmer_dict :
-        print(key,kmer_dict[key])
+        chunks = get_chunks(seq_otu[0], 37)
+        for chunk in chunks :
+            list_test = search_mates(kmer_dict,chunk,kmer_size)
+            #if list_test[0][1] >= 2 and list_test[1][1] >= 2 :
+
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
