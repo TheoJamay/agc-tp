@@ -146,48 +146,62 @@ def search_mates(kmer_dict, sequence, kmer_size):
 			for value in kmer_dict[kmer] :
 				list_id.append(value)
 	list_best = Counter(list_id).most_common(2)
-	return list_best[0][0],list_best[1][0]
+	if len(list_best) == 2 :
+		return list_best[0][0],list_best[1][0]
+	else :
+		return 1,1,1
 
 
 def detect_chimera(perc_identity_matrix) :
 	list_std = []
-	print(perc_identity_matrix)
+	par1 = False
+	par2 = False
 	for data in perc_identity_matrix :
 		list_std.append(round(statistics.stdev(data),2))
-	print(list_std)
-	if statistics.mean(list_std) > 5 : 
-		return True
-	else :
-		return False
+		if data[0] > data[1] :
+			par1 = True
+		elif data[0] < data[1] :
+			par2 = True
+	if statistics.mean(list_std) > 5 :
+		if par1 and par2 : 
+			return True
+	return False
 
 
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 	kmer_dict = {}
-	list_otu = abundance_greedy_clustering(amplicon_file, minseqlen, mincount,chunk_size,kmer_size)
-	list_nochim = [list_otu[0],list_otu[1]]
-	for seq_otu in list_otu[2:] :
-		for i in range(len(list_nochim)) :
-			kmer_dict = get_unique_kmer(kmer_dict,list_nochim[i][0],i,8)
-		chunks_cand = get_chunks(seq_otu[0], 37)
+	seqs=list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+	list_nochim = [seqs[0],seqs[1]]
+	w = 0
+	for i in range(2,len(seqs)) :
+		for j in range(w,len(list_nochim)) :
+			kmer_dict = get_unique_kmer(kmer_dict,list_nochim[j][0],j,8)
+			w+=1
+		chunks_cand = get_chunks(seqs[i][0], 37)
 		perc_identity_matrix = []
 		for chunk in chunks_cand :
 			best = search_mates(kmer_dict,chunk,kmer_size)
 			if len(best) == 2 :
-				# chunk_par1 = get_chunks(list_nochim[best[0]][0], 37)
-				# chunk_par2 = get_chunks(list_nochim[best[1]][0], 37)
-				for chunk in range(len(chunks_cand)) :
+				print(best[0])
+				print(best[1])
+				chunk_par1 = get_chunks(list_nochim[best[0]][0], 37)
+				chunk_par2 = get_chunks(list_nochim[best[1]][0], 37)
+				for c in range(len(chunks_cand)) :
+					# print(chunks_cand[c])
+					# print(list_nochim)
+					# print(list_nochim[best[0]][0])
+					# print(list_nochim[best[1]][0])
 					list_tmp = []
-					list_tmp.append(get_identity(nw.global_align(chunks_cand[i], list_nochim[best[0]][0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
-					list_tmp.append(get_identity(nw.global_align(chunks_cand[i], list_nochim[best[1]][0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+					list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par1[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+					list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par2[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+					# print(get_identity(nw.global_align(chunks_cand[c], chunk_par1[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+					# print(get_identity(nw.global_align(chunks_cand[c], chunk_par2[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
 					perc_identity_matrix.append(list_tmp)
+				#print(perc_identity_matrix)
 				if detect_chimera(perc_identity_matrix) is False :
-					list_nochim.append(seq_otu)
-		#break
-			# perc_identity_matrix = [[get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))),\
-			#     get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))))]\
-			#         [get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))),\
-			#             get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))))]]
-
+					list_nochim.append(seqs[i])
+				break
+		
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
