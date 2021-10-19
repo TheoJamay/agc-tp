@@ -182,8 +182,8 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 		for chunk in chunks_cand :
 			best = search_mates(kmer_dict,chunk,kmer_size)
 			if len(best) == 2 :
-				print(best[0])
-				print(best[1])
+				#print(best[0])
+				#print(best[1])
 				chunk_par1 = get_chunks(list_nochim[best[0]][0], 37)
 				chunk_par2 = get_chunks(list_nochim[best[1]][0], 37)
 				for c in range(len(chunks_cand)) :
@@ -201,11 +201,13 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 				if detect_chimera(perc_identity_matrix) is False :
 					list_nochim.append(seqs[i])
 				break
+	for seq in list_nochim :
+		yield [seq[0],seq[1]]
 		
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-	seqs=list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+	seqs=list(chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size))
 	list_otu = [[seqs[0][0],seqs[0][1]]]
 	for seq in seqs[1:] :
 		for seq_otu in list_otu :
@@ -244,9 +246,11 @@ def main():
 	# for seq in dereplication_fulllength(args.amplicon_file, args.minseqlen, args.mincount) :
 	#     print(seq)
 	# OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
-	# output_file = "OTU.fasta"
+	output_file = "OTU.fasta"
 	# write_OTU(OTU_list, output_file)
-	chimera_removal(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+	#chimera_removal(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+	OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+	write_OTU(OTU_list, output_file)
 
 if __name__ == '__main__':
 	main()
