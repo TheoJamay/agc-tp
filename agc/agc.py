@@ -146,10 +146,9 @@ def search_mates(kmer_dict, sequence, kmer_size):
 			for value in kmer_dict[kmer] :
 				list_id.append(value)
 	list_best = Counter(list_id).most_common(2)
-	if len(list_best) == 2 :
+	if list_best[0][1] >= 2 :
 		return list_best[0][0],list_best[1][0]
-	else :
-		return 1,1,1
+	return -1
 
 
 def detect_chimera(perc_identity_matrix) :
@@ -171,49 +170,41 @@ def detect_chimera(perc_identity_matrix) :
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 	kmer_dict = {}
 	seqs=list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
-	list_nochim = [seqs[0],seqs[1]]
-	w = 0
+	yield seqs[0]
+	yield seqs[1]
+	kmer_dict = get_unique_kmer(kmer_dict,seqs[0][0],0,kmer_size)
+	kmer_dict = get_unique_kmer(kmer_dict,seqs[1][0],1,kmer_size)
 	for i in range(2,len(seqs)) :
-		for j in range(w,len(list_nochim)) :
-			kmer_dict = get_unique_kmer(kmer_dict,list_nochim[j][0],j,8)
-			w+=1
-		chunks_cand = get_chunks(seqs[i][0], 37)
+		chunks_cand = get_chunks(seqs[i][0], chunk_size)
 		perc_identity_matrix = []
-		for chunk in chunks_cand :
-			best = search_mates(kmer_dict,chunk,kmer_size)
-			if len(best) == 2 :
-				#print(best[0])
-				#print(best[1])
-				chunk_par1 = get_chunks(list_nochim[best[0]][0], 37)
-				chunk_par2 = get_chunks(list_nochim[best[1]][0], 37)
-				for c in range(len(chunks_cand)) :
-					# print(chunks_cand[c])
-					# print(list_nochim)
-					# print(list_nochim[best[0]][0])
-					# print(list_nochim[best[1]][0])
-					list_tmp = []
-					list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par1[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
-					list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par2[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
-					# print(get_identity(nw.global_align(chunks_cand[c], chunk_par1[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
-					# print(get_identity(nw.global_align(chunks_cand[c], chunk_par2[c], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
-					perc_identity_matrix.append(list_tmp)
-				#print(perc_identity_matrix)
-				if detect_chimera(perc_identity_matrix) is False :
-					list_nochim.append(seqs[i])
-				break
-	for seq in list_nochim :
-		yield [seq[0],seq[1]]
-		
+		for c in range(len(chunks_cand)) :
+			best = search_mates(kmer_dict,chunks_cand[c],kmer_size)
+			if best != -1 :
+				chunk_par1 = get_chunks(seqs[best[0]][0], chunk_size)
+				chunk_par2 = get_chunks(seqs[best[1]][0], chunk_size)
+				list_tmp = []
+				list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par1[c],\
+					gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+				list_tmp.append(get_identity(nw.global_align(chunks_cand[c], chunk_par2[c],\
+					gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))))
+				perc_identity_matrix.append(list_tmp)
+		if detect_chimera(perc_identity_matrix) is False :
+			kmer_dict = get_unique_kmer(kmer_dict,seqs[i],i,kmer_size)
+			yield seqs[i]
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 	seqs=list(chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size))
-	list_otu = [[seqs[0][0],seqs[0][1]]]
+	list_otu = [seqs[0]]
 	for seq in seqs[1:] :
+		flag = True
 		for seq_otu in list_otu :
-			if get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))) < 97 :
-				list_otu.append([seq[0],seq[1]])
+			if get_identity(nw.global_align(seq[0], seq_otu[0], gap_open=-1, gap_extend=-1,\
+				matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))) >= 97 :				
+				flag = False
 				break
+		if flag :
+			list_otu.append(seq)
 	return list_otu
 
 
@@ -221,10 +212,11 @@ def fill(text, width=80):
 	"""Split text with a line return to respect fasta format"""
 	return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
+
 def write_OTU(OTU_list, output_file):
 	with open(output_file,"w") as otu_file :
 		for i in range(len(OTU_list)) :
-			otu_file.write(">OTU_{}occurrence:{}\n".format(i,OTU_list[i][1]))
+			otu_file.write(">OTU_{} occurrence:{}\n".format(i+1,OTU_list[i][1]))
 			otu_file.write(fill(OTU_list[i][0])+"\n")
 
 
