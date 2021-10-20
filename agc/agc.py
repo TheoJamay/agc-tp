@@ -23,13 +23,13 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
+__author__ = "Théo Jamay et Rebecca Goulancourt"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["Théo Jamay et Rebecca Goulancourt"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Théo Jamay et Rebecca Goulancourt"
+__email__ = "jamay.theo@gmail.com et rgoulancourt@yahoo.com"
 __status__ = "Developpement"
 
 
@@ -306,7 +306,7 @@ def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, 
 					matrix=os.path.abspath(os.path.join(os.path.dirname(__file__), "MATCH")))) >= 97:
 				flag = False
 				break
-		if flag:
+		if flag :
 			list_otu.append(seq)
 	return list_otu
 
